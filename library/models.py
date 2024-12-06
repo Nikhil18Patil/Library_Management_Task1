@@ -1,12 +1,12 @@
-# models.py
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import RegexValidator
 
 class User(AbstractUser):
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  
-    username = models.CharField(max_length=30, unique=True)  
+    email = models.EmailField(unique=True, blank=False, null=False)
     password = models.CharField(max_length=128)  
     first_name = models.CharField(max_length=30, blank=False, null=False)
     last_name = models.CharField(max_length=30, blank=False, null=False)
@@ -23,18 +23,24 @@ class User(AbstractUser):
         ]
     )
     is_librarian = models.BooleanField(default=False)
+    
+    #we are not using username so make it blank , null, non unique
+    username = models.CharField(max_length=150, blank=True, null=True, unique=False)
+    
+    USERNAME_FIELD = 'email'  # Set email as the login field
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'mobile_number']
 
     def __str__(self):
-        return f"{self.username} ({'Librarian' if self.is_librarian else 'User'})"
+        return f"{self.first_name} {self.last_name} ({'Librarian' if self.is_librarian else 'User'})"
 
 class Book(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    book_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255)
     status = models.CharField(max_length=20, default='available')  # available or borrowed
 
 class BorrowRequest(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    borrow_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     start_date = models.DateField()

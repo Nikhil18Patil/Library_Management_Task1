@@ -37,7 +37,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('example_app/', include('library.urls')),
+    path('api/', include('library.urls')),
     
     
      # Swagger and ReDoc URLs

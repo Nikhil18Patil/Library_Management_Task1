@@ -18,11 +18,11 @@ class RegisterLibrarianView(APIView):
         responses={
             201: openapi.Response(
                 description="Librarian registered successfully.",
-                examples={"application/json": {"id": 1, "username": "admin", "first_name": "John", "last_name": "Doe", "mobile_number": "1234567890"}}
+                examples={"application/json": {"id": 1, "email": "nit@gmail.com", "first_name": "John", "last_name": "Doe", "mobile_number": "1234567890", "is_librarian":"True"}}
             ),
             400: openapi.Response(
                 description="Validation error in input data.",
-                examples={"application/json": {"username": ["This field must be unique."]}}
+                examples={"application/json": {"email": ["This field must be unique."]}}
             ),
             500: openapi.Response(
                 description="Internal server error.",
@@ -32,11 +32,11 @@ class RegisterLibrarianView(APIView):
     )
     def post(self, request):
         try:
+            import pdb ; pdb.set_trace()
             data = request.data
-            data['is_librarian'] = True
             serializer = UserSerializer(data=data)
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(is_librarian=True)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -50,19 +50,19 @@ class LoginView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "username": openapi.Schema(type=openapi.TYPE_STRING, description="User's username"),
+                "email": openapi.Schema(type=openapi.TYPE_STRING, description="User's email"),
                 "password": openapi.Schema(type=openapi.TYPE_STRING, description="User's password"),
             },
-            required=["username", "password"],
+            required=["email", "password"],
         ),
         responses={
             200: openapi.Response(
                 description="User authenticated successfully.",
-                examples={"application/json": {"access": "jwt_token", "refresh": "refresh_token", "user_id": 1, "username": "admin"}}
+                examples={"application/json": {"access": "jwt_token", "refresh": "refresh_token", "user_id": 1, "email": "admin"}}
             ),
             400: openapi.Response(
                 description="Bad request, missing fields.",
-                examples={"application/json": {"error": "Please provide both username and password."}}
+                examples={"application/json": {"error": "Please provide both email and password."}}
             ),
             401: openapi.Response(
                 description="Unauthorized, invalid credentials.",
@@ -76,13 +76,13 @@ class LoginView(APIView):
     )
     def post(self, request):
         try:
-            username = request.data.get('username')
+            email = request.data.get('email')
             password = request.data.get('password')
 
-            if not username or not password:
-                return Response({"error": "Please provide both username and password."}, status=status.HTTP_400_BAD_REQUEST)
+            if not email or not password:
+                return Response({"error": "Please provide both email and password."}, status=status.HTTP_400_BAD_REQUEST)
 
-            user = authenticate(request, username=username, password=password)
+            user = authenticate(request, email=email, password=password)
             if user is None:
                 return Response({"error": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -92,7 +92,8 @@ class LoginView(APIView):
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
                 "user_id": user.id,
-                "username": user.username
+                "email": user.email,
+                "name":f"{user.first_name} {user.last_name}"
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -105,10 +106,19 @@ class CreateUserView(APIView):
         operation_id="Create a New Library User",
         operation_description="Create a new library user. Only librarians are allowed to perform this action.",
         request_body=UserSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                name="Authorization",
+                in_=openapi.IN_HEADER,
+                type=openapi.TYPE_STRING,
+                required=True,
+                description="Bearer token",
+            ),
+        ],
         responses={
             201: openapi.Response(
                 description="User created successfully.",
-                examples={"application/json": {"id": 2, "username": "user1", "first_name": "Alice", "last_name": "Smith", "mobile_number": "9876543210"}}
+                examples={"application/json": {"id": 2, "email": "user1@gmail.com", "first_name": "Alice", "last_name": "Smith", "mobile_number": "9876543210", "is_librarian":"False"}}
             ),
             403: openapi.Response(
                 description="Forbidden. Only librarians can perform this action.",
@@ -116,7 +126,7 @@ class CreateUserView(APIView):
             ),
             400: openapi.Response(
                 description="Validation error in input data.",
-                examples={"application/json": {"username": ["This field must be unique."]}}
+                examples={"application/json": {"email": ["This field must be unique."]}}
             ),
             500: openapi.Response(
                 description="Internal server error.",
@@ -126,9 +136,10 @@ class CreateUserView(APIView):
     )
     def post(self, request):
         try:
+            print(request.user.first_name, "->", request.user.is_librarian)
             if not request.user.is_librarian:
                 return Response({"error": "Only librarians can create users."}, status=status.HTTP_403_FORBIDDEN)
-
+            
             data = request.data
             serializer = UserSerializer(data=data)
             if serializer.is_valid():
@@ -138,13 +149,75 @@ class CreateUserView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+
+class BookCreateView(APIView):
+    permission_classes=[permissions.IsAuthenticated]
+    @swagger_auto_schema(
+        operation_id="BookCreate API",
+        operation_description="this api is user to create book, only librarian can add the book",
+        request_body=BookSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                name="Authorization",
+                in_=openapi.IN_HEADER,
+                type=openapi.TYPE_STRING,
+                required=True,
+                description="Bearer token",
+            ),
+        ],
+        responses={
+            201: openapi.Response(
+                description="User created successfully.",
+                examples={"application/json": {"id": 2, "title": "ABC book", "author": "Alice",  "status": "available"}}
+            ),
+            403: openapi.Response(
+                description="Forbidden. Only librarians can perform this action.",
+                examples={"application/json": {"error": "Only librarians can create users."}}
+            ),
+            400: openapi.Response(
+                description="Validation error in input data.",
+                examples={"application/json": {"invalid": ["This field must be unique."]}}
+            ),
+            500: openapi.Response(
+                description="Internal server error.",
+                examples={"application/json": {"error": "Unexpected error occurred."}}
+            ),
+        },
+        
+    )
+    def post(self, request):
+        try:
+            if not request.user.is_librarian:
+                return Response({'error':"Only librarians can create Books"}, status=status.HTTP_403_FORBIDDEN)
+            data=request.data
+            serializer=BookSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'data':serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({'data':serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error':str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
 # List All Books
 class BookListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     @swagger_auto_schema(
         operation_id="List All Books",
-        operation_description="Retrieve a list of all books in the library.",
+        operation_description="Retrieve a list of all books in the library. user and librarian both can see the book list",
+        manual_parameters=[
+            openapi.Parameter(
+                name="Authorization",
+                in_=openapi.IN_HEADER,
+                type=openapi.TYPE_STRING,
+                required=True,
+                description="Bearer token",
+            ),
+        ],
         responses={
             200: openapi.Response(
                 description="List of books retrieved successfully.",
@@ -154,12 +227,8 @@ class BookListView(APIView):
                 description="Internal server error.",
                 examples={"application/json": {"error": "Unexpected error occurred."}}
             ),
-        },
-        manual_parameters=[
-            openapi.Parameter(
-                "Authorization", openapi.IN_HEADER, description="Bearer Token", type=openapi.TYPE_STRING, required=True
-            )
-        ],
+        }
+        
     )
     def get(self, request):
         try:
@@ -185,9 +254,10 @@ class BorrowRequestListView(APIView):
                 examples={
                     "application/json": [
                         {
-                            "id": 1,
-                            "user": 2,
-                            "book": 1,
+                            "borrow_id": 1,
+                            "book_id": 1,
+                            "email": "user@gmail.com",
+                            "name": "first_name last_name",
                             "start_date": "2024-12-01",
                             "end_date": "2024-12-15",
                             "status": "pending",
@@ -226,9 +296,10 @@ class BorrowRequestListView(APIView):
                 description="Borrow request created successfully.",
                 examples={
                     "application/json": {
-                        "id": 1,
-                        "user": 2,
-                        "book": 1,
+                        "borrow_id": 1,
+                        "book_id": 1,
+                        "email": "user@gmail.com",
+                        "name": "first_name last_name",
                         "start_date": "2024-12-01",
                         "end_date": "2024-12-15",
                         "status": "pending",
@@ -253,8 +324,6 @@ class BorrowRequestListView(APIView):
     def post(self, request):
         try:
             data = request.data
-            data['user'] = request.user.id  # Associate the request with the logged-in user
-
             # Check for overlapping borrow dates
             book_id = data.get('book')
             start_date = data.get('start_date')
@@ -271,7 +340,7 @@ class BorrowRequestListView(APIView):
 
             serializer = BorrowRequestSerializer(data=data)
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(user=request.user) # Associate the request with the logged-in user
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -324,12 +393,12 @@ class ApproveBorrowRequestView(APIView):
             )
         ],
     )
-    def put(self, request, pk):
+    def put(self, request, borrow_id):
         try:
             if not request.user.is_librarian:
                 return Response({"error": "Only librarians can approve or deny requests."}, status=status.HTTP_403_FORBIDDEN)
 
-            borrow_request = BorrowRequest.objects.get(pk=pk)
+            borrow_request = BorrowRequest.objects.get(pk=borrow_id)
             status_update = request.data.get('status', 'denied')
 
             if status_update not in ['approved', 'denied']:
