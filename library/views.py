@@ -46,7 +46,7 @@ class RegisterLibrarianView(APIView):
 class LoginView(APIView):
     @swagger_auto_schema(
         operation_id="Login User",
-        operation_description="Authenticate a user and generate JWT tokens (access and refresh).",
+        operation_description="Authenticate a user/librarian and generate JWT tokens (access and refresh).",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
@@ -58,7 +58,7 @@ class LoginView(APIView):
         responses={
             200: openapi.Response(
                 description="User authenticated successfully.",
-                examples={"application/json": {"access": "jwt_token", "refresh": "refresh_token", "user_id": 1, "email": "admin"}}
+                examples={"application/json": {"access": "jwt_token", "refresh": "refresh_token", "user_id": 1, "email": "user@gmail.com", "name":"first_name last_name"}}
             ),
             400: openapi.Response(
                 description="Bad request, missing fields.",
