@@ -5,7 +5,6 @@ This project is a **Library Management System** backend API built using **Django
 access **redoc** at https://library-management-task1.vercel.app/
 ---
 access **swagger documentation** at https://library-management-task1.vercel.app/swagger/
-
 ---
 
 ## Features
