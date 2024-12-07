@@ -1,7 +1,9 @@
 # Library Management System API
 
 This project is a **Library Management System** backend API built using **Django** and **Django Rest Framework (DRF)**. It allows librarians to manage books, users, and borrow requests while supporting authentication and authorization using **JWT** tokens.
+---
 access **redoc** at https://library-management-task1.vercel.app/
+---
 access **swagger documentation** at https://library-management-task1.vercel.app/swagger/
 
 ---
